@@ -957,8 +957,8 @@
         }
     }
 
-    async function handleSaveSmtp() {
-        const config = {
+    function _getSmtpFormConfig() {
+        return {
             server: document.getElementById('smtp-server').value.trim(),
             port: parseInt(document.getElementById('smtp-port').value, 10) || 587,
             username: document.getElementById('smtp-username').value.trim(),
@@ -967,33 +967,33 @@
             sender_email: document.getElementById('smtp-sender-email').value.trim(),
             sender_name: document.getElementById('smtp-sender-name').value.trim()
         };
+    }
 
+    async function handleSaveSmtp() {
+        const config = _getSmtpFormConfig();
         const statusEl = document.getElementById('smtp-status');
-        try {
-            statusEl.textContent = 'Sauvegarde...';
-            statusEl.className = 'status-badge loading';
-            statusEl.style.display = '';
-            await Api.updateSmtpConfig(config);
-            statusEl.textContent = 'Configuration sauvegardée';
-            statusEl.className = 'status-badge success';
-        } catch (e) {
-            statusEl.textContent = e.message;
-            statusEl.className = 'status-badge error';
-        }
+        statusEl.textContent = 'Sauvegarde...';
+        statusEl.className = 'status-badge loading';
+        statusEl.style.display = '';
+        await Api.updateSmtpConfig(config);
+        statusEl.textContent = 'Configuration sauvegardée';
+        statusEl.className = 'status-badge success';
     }
 
     async function handleTestSmtp() {
         const statusEl = document.getElementById('smtp-status');
         try {
-            statusEl.textContent = 'Test en cours...';
+            // Sauvegarder d'abord, puis tester
+            statusEl.textContent = 'Sauvegarde et test en cours...';
             statusEl.className = 'status-badge loading';
             statusEl.style.display = '';
+            await Api.updateSmtpConfig(_getSmtpFormConfig());
             const result = await Api.testSmtpConnection();
             if (result.success) {
                 statusEl.textContent = 'Connexion SMTP OK';
                 statusEl.className = 'status-badge success';
             } else {
-                statusEl.textContent = result.error || 'Échec';
+                statusEl.textContent = result.error || 'Échec de connexion';
                 statusEl.className = 'status-badge error';
             }
         } catch (e) {

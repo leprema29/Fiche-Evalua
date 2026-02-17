@@ -150,8 +150,14 @@ def update_smtp():
 @login_required
 def test_smtp():
     config = SmtpConfig.query.first()
-    if not config or not config.server or not config.username:
-        return jsonify({'error': 'Configuration SMTP incomplète'}), 400
+    if not config:
+        return jsonify({'error': 'Configuration SMTP non trouvée. Sauvegardez d\'abord.'}), 400
+    if not config.server:
+        return jsonify({'error': 'Serveur SMTP manquant'}), 400
+    if not config.username:
+        return jsonify({'error': 'Nom d\'utilisateur SMTP manquant'}), 400
+    if not config.password:
+        return jsonify({'error': 'Mot de passe SMTP manquant'}), 400
     result = test_smtp_connection({
         'server': config.server,
         'port': config.port,
