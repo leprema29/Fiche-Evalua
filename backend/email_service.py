@@ -9,6 +9,50 @@ from email import encoders
 import os
 
 
+def _connect_smtp(smtp_config, timeout=15):
+    """
+    Tente une connexion SMTP avec la méthode configurée,
+    puis fallback sur l'autre méthode si timeout/échec.
+
+    Returns:
+        smtplib.SMTP: connexion SMTP authentifiée
+    Raises:
+        Exception si les deux méthodes échouent
+    """
+    server_addr = smtp_config['server']
+    port = smtp_config['port']
+    username = smtp_config['username']
+    password = smtp_config['password']
+    use_tls = smtp_config.get('use_tls', True)
+
+    methods = []
+    if use_tls:
+        methods = ['starttls', 'ssl']
+    else:
+        methods = ['ssl', 'starttls']
+
+    last_error = None
+    for method in methods:
+        try:
+            if method == 'starttls':
+                server = smtplib.SMTP(server_addr, port, timeout=timeout)
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+            else:
+                server = smtplib.SMTP_SSL(server_addr, port, timeout=timeout)
+
+            server.login(username, password)
+            return server
+        except (smtplib.SMTPAuthenticationError, smtplib.SMTPRecipientsRefused):
+            raise  # Ne pas fallback pour les erreurs d'auth
+        except Exception as e:
+            last_error = e
+            continue
+
+    raise last_error or Exception(f'Impossible de se connecter à {server_addr}:{port}')
+
+
 def send_email(smtp_config, recipient_email, subject, body_text, attachment_path=None, attachment_name=None):
     """
     Envoie un email avec pièce jointe optionnelle.
@@ -42,16 +86,7 @@ def send_email(smtp_config, recipient_email, subject, body_text, attachment_path
                 part.add_header('Content-Disposition', f'attachment; filename="{fname}"')
                 msg.attach(part)
 
-        # Connexion SMTP
-        if smtp_config.get('use_tls', True):
-            server = smtplib.SMTP(smtp_config['server'], smtp_config['port'], timeout=30)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-        else:
-            server = smtplib.SMTP_SSL(smtp_config['server'], smtp_config['port'], timeout=30)
-
-        server.login(smtp_config['username'], smtp_config['password'])
+        server = _connect_smtp(smtp_config, timeout=30)
         server.send_message(msg)
         server.quit()
 
@@ -59,8 +94,6 @@ def send_email(smtp_config, recipient_email, subject, body_text, attachment_path
 
     except smtplib.SMTPAuthenticationError:
         return {'success': False, 'error': 'Échec d\'authentification SMTP. Vérifiez le nom d\'utilisateur et le mot de passe.'}
-    except smtplib.SMTPConnectError:
-        return {'success': False, 'error': f'Impossible de se connecter au serveur {smtp_config["server"]}:{smtp_config["port"]}'}
     except smtplib.SMTPRecipientsRefused:
         return {'success': False, 'error': f'Adresse destinataire refusée : {recipient_email}'}
     except Exception as e:
@@ -75,21 +108,11 @@ def test_smtp_connection(smtp_config):
         dict: {'success': bool, 'error': str|None}
     """
     try:
-        if smtp_config.get('use_tls', True):
-            server = smtplib.SMTP(smtp_config['server'], smtp_config['port'], timeout=15)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-        else:
-            server = smtplib.SMTP_SSL(smtp_config['server'], smtp_config['port'], timeout=15)
-
-        server.login(smtp_config['username'], smtp_config['password'])
+        server = _connect_smtp(smtp_config, timeout=15)
         server.quit()
         return {'success': True, 'error': None}
 
     except smtplib.SMTPAuthenticationError:
         return {'success': False, 'error': 'Échec d\'authentification. Vérifiez le nom d\'utilisateur et le mot de passe.'}
-    except smtplib.SMTPConnectError:
-        return {'success': False, 'error': f'Impossible de se connecter à {smtp_config["server"]}:{smtp_config["port"]}'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
