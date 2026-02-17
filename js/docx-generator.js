@@ -556,7 +556,7 @@ const DocxGenerator = {
         const filename = `Fiche_${data.agentNom.replace(/\s+/g, '_')}_${data.semaineDebut}_${data.semaineFin}.docx`;
         saveAs(blob, filename);
 
-        return filename;
+        return { filename, blob };
     },
 
     // === UTILITAIRES DE FORMATAGE ===

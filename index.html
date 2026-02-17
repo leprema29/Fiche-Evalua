@@ -11,14 +11,21 @@
 <body>
 
 <header class="app-header">
-    <h1>Fiches d'Évaluation Hebdomadaires</h1>
-    <p class="subtitle">ANTIC — Agence Nationale des Technologies de l'Information et de la Communication</p>
+    <div class="header-main">
+        <h1>Fiches d'Évaluation Hebdomadaires</h1>
+        <p class="subtitle">ANTIC — Agence Nationale des Technologies de l'Information et de la Communication</p>
+    </div>
+    <div id="auth-status" class="auth-status" style="display:none;">
+        <span id="auth-username"></span>
+        <button type="button" id="btn-logout" class="btn btn-sm btn-secondary">Déconnexion</button>
+    </div>
 </header>
 
 <nav class="tabs">
     <button class="tab active" data-tab="nouvelle-fiche">Nouvelle Fiche</button>
     <button class="tab" data-tab="agents-modeles">Agents &amp; Modèles</button>
     <button class="tab" data-tab="historique">Historique</button>
+    <button class="tab" data-tab="email-config">Email &amp; Planification</button>
 </nav>
 
 <main class="content">
@@ -109,6 +116,7 @@
 
         <div class="form-actions">
             <button type="button" id="btn-generer" class="btn btn-primary">Générer la fiche Word (.docx)</button>
+            <button type="button" id="btn-envoyer-email" class="btn btn-email" style="display:none;">Envoyer par email</button>
             <button type="button" id="btn-reinitialiser" class="btn btn-secondary">Réinitialiser</button>
         </div>
 
@@ -195,7 +203,140 @@
         </div>
     </section>
 
+    <!-- ===================== TAB 4: EMAIL & PLANIFICATION ===================== -->
+    <section id="email-config" class="tab-content">
+
+        <!-- Connexion admin -->
+        <div id="login-section" class="form-section login-section">
+            <h2>Connexion administrateur</h2>
+            <p class="help-text">Connectez-vous pour accéder à la configuration email et à la planification automatique.</p>
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="login-username">Nom d'utilisateur</label>
+                    <input type="text" id="login-username" placeholder="admin" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Mot de passe</label>
+                    <input type="password" id="login-password" placeholder="Mot de passe" autocomplete="current-password">
+                </div>
+                <button type="button" id="btn-login" class="btn btn-primary">Se connecter</button>
+                <p id="login-error" class="error-message" style="display:none;"></p>
+            </div>
+        </div>
+
+        <!-- Contenu admin (visible après connexion) -->
+        <div id="admin-content" style="display:none;">
+
+            <!-- Configuration SMTP -->
+            <div class="form-section email-section">
+                <h2>Configuration SMTP</h2>
+                <p class="help-text">Paramètres du serveur mail pour l'envoi des fiches. Les identifiants sont stockés de manière sécurisée sur le serveur.</p>
+                <div class="form-row">
+                    <div class="form-group" style="flex:2">
+                        <label for="smtp-server">Serveur SMTP</label>
+                        <input type="text" id="smtp-server" placeholder="Ex: smtp.gmail.com">
+                    </div>
+                    <div class="form-group" style="flex:1">
+                        <label for="smtp-port">Port</label>
+                        <input type="number" id="smtp-port" value="587" min="1" max="65535">
+                    </div>
+                    <div class="form-group" style="flex:0 0 auto; align-self:center; padding-top:1.2rem;">
+                        <label class="ferie-toggle">
+                            <input type="checkbox" id="smtp-tls" checked>
+                            TLS/STARTTLS
+                        </label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="smtp-username">Nom d'utilisateur SMTP</label>
+                        <input type="text" id="smtp-username" placeholder="Ex: votre.email@gmail.com" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="smtp-password">Mot de passe SMTP</label>
+                        <input type="password" id="smtp-password" placeholder="Mot de passe ou App Password" autocomplete="new-password">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="smtp-sender-email">Email expéditeur</label>
+                        <input type="email" id="smtp-sender-email" placeholder="Ex: noreply@antic.cm">
+                    </div>
+                    <div class="form-group">
+                        <label for="smtp-sender-name">Nom expéditeur</label>
+                        <input type="text" id="smtp-sender-name" placeholder="Ex: ANTIC" value="ANTIC">
+                    </div>
+                </div>
+                <div class="form-actions-left">
+                    <button type="button" id="btn-save-smtp" class="btn btn-primary">Sauvegarder la configuration</button>
+                    <button type="button" id="btn-test-smtp" class="btn btn-secondary">Tester la connexion</button>
+                    <span id="smtp-status" class="status-badge" style="display:none;"></span>
+                </div>
+            </div>
+
+            <!-- Emails des employés + Planification -->
+            <div class="form-section email-section">
+                <h2>Emails des employés &amp; Planification</h2>
+                <p class="help-text">Configurez l'adresse email de chaque employé et planifiez l'envoi automatique hebdomadaire de fiches générées à partir de leurs tâches assignées.</p>
+                <div id="employees-email-list" class="items-list">
+                    <p class="empty-message">Synchronisez les données pour voir les employés.</p>
+                </div>
+                <div class="form-actions-left" style="margin-top:1rem;">
+                    <button type="button" id="btn-sync-data" class="btn btn-secondary">Synchroniser les données</button>
+                </div>
+            </div>
+
+            <!-- Journal des emails -->
+            <div class="form-section">
+                <h2>Journal des emails envoyés</h2>
+                <div id="email-logs-list" class="items-list">
+                    <p class="empty-message">Aucun email envoyé pour le moment.</p>
+                </div>
+                <div class="form-actions-left" style="margin-top:0.5rem;">
+                    <button type="button" id="btn-refresh-logs" class="btn btn-secondary btn-sm">Rafraîchir</button>
+                </div>
+            </div>
+
+            <!-- Changement de mot de passe -->
+            <div class="form-section">
+                <h2>Changer le mot de passe admin</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="current-password">Mot de passe actuel</label>
+                        <input type="password" id="current-password" autocomplete="current-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-password">Nouveau mot de passe</label>
+                        <input type="password" id="new-password" autocomplete="new-password">
+                    </div>
+                    <div class="form-group" style="flex:0 0 auto; align-self:flex-end;">
+                        <button type="button" id="btn-change-password" class="btn btn-primary">Modifier</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
 </main>
+
+<!-- Modal envoi email -->
+<div id="email-modal" class="modal" style="display:none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <h3>Envoyer la fiche par email</h3>
+        <div class="form-group">
+            <label for="modal-recipient">Email du destinataire</label>
+            <input type="email" id="modal-recipient" placeholder="employe@example.com">
+        </div>
+        <p id="modal-info" class="help-text"></p>
+        <div class="modal-actions">
+            <button type="button" id="btn-modal-send" class="btn btn-email">Envoyer</button>
+            <button type="button" id="btn-modal-cancel" class="btn btn-secondary">Annuler</button>
+        </div>
+        <p id="modal-status" class="status-message" style="display:none;"></p>
+    </div>
+</div>
 
 <footer class="app-footer">
     <p>Générateur de Fiches d'Évaluation Hebdomadaires — ANTIC</p>
@@ -203,6 +344,7 @@
 
 <script src="js/storage.js"></script>
 <script src="js/holidays.js"></script>
+<script src="js/api.js"></script>
 <script src="js/docx-generator.js"></script>
 <script src="js/app.js"></script>
 
