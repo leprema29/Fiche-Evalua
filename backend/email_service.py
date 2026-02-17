@@ -9,10 +9,17 @@ from email import encoders
 import os
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def _connect_smtp(smtp_config, timeout=15):
     """
-    Tente une connexion SMTP avec la méthode configurée,
-    puis fallback sur l'autre méthode si timeout/échec.
+    Tente une connexion SMTP intelligente basée sur le port :
+    - Port 465 → SSL direct
+    - Port 587/25/autre → STARTTLS
+    Si la première méthode échoue, essaie l'autre.
 
     Returns:
         smtplib.SMTP: connexion SMTP authentifiée
@@ -23,17 +30,18 @@ def _connect_smtp(smtp_config, timeout=15):
     port = smtp_config['port']
     username = smtp_config['username']
     password = smtp_config['password']
-    use_tls = smtp_config.get('use_tls', True)
 
-    methods = []
-    if use_tls:
-        methods = ['starttls', 'ssl']
-    else:
+    # Auto-détection basée sur le port (plus fiable que le checkbox TLS)
+    if port == 465:
         methods = ['ssl', 'starttls']
+    else:
+        # Port 587, 25, ou autre → STARTTLS d'abord
+        methods = ['starttls', 'ssl']
 
     last_error = None
     for method in methods:
         try:
+            logger.info(f"SMTP: tentative {method} sur {server_addr}:{port}")
             if method == 'starttls':
                 server = smtplib.SMTP(server_addr, port, timeout=timeout)
                 server.ehlo()
@@ -43,14 +51,16 @@ def _connect_smtp(smtp_config, timeout=15):
                 server = smtplib.SMTP_SSL(server_addr, port, timeout=timeout)
 
             server.login(username, password)
+            logger.info(f"SMTP: connexion {method} réussie sur {server_addr}:{port}")
             return server
         except (smtplib.SMTPAuthenticationError, smtplib.SMTPRecipientsRefused):
             raise  # Ne pas fallback pour les erreurs d'auth
         except Exception as e:
+            logger.warning(f"SMTP: {method} échoué sur {server_addr}:{port} — {e}")
             last_error = e
             continue
 
-    raise last_error or Exception(f'Impossible de se connecter à {server_addr}:{port}')
+    raise last_error or Exception(f'Impossible de se connecter à {server_addr}:{port} (SSL et STARTTLS échoués)')
 
 
 def send_email(smtp_config, recipient_email, subject, body_text, attachment_path=None, attachment_name=None):
