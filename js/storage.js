@@ -124,5 +124,72 @@ const Storage = {
 
     removeLogo() {
         localStorage.removeItem(this.KEYS.LOGO);
+    },
+
+    // ===== DONNÉES PAR DÉFAUT (extraites des fiches existantes) =====
+    DEFAULTS: {
+        agents: [
+            { nom: "ABOUBAKAR ISSIAKOU", categorie: "Chef de Service", structure: "CIRT" },
+            { nom: "AMADOU SIDDIKI", categorie: "CADRE", structure: "CIRT" },
+            { nom: "ORUH MARION TAKU", categorie: "CADRE", structure: "CIRT" }
+        ],
+        templates: [
+            {
+                designation: "Requêtes d'authentification",
+                taches: "Traitement des dossiers d'authentification"
+            },
+            {
+                designation: "Mission d'investigation",
+                taches: "Investigations numériques"
+            },
+            {
+                designation: "Analyse forensique",
+                taches: "Analyse des preuves numériques extraites"
+            },
+            {
+                designation: "Rédaction de rapports",
+                taches: "Rédaction des rapports d'investigation numérique"
+            },
+            {
+                designation: "Veille sécuritaire",
+                taches: "Veille et surveillance des menaces cybernétiques"
+            },
+            {
+                designation: "Réponse aux incidents",
+                taches: "Traitement et réponse aux incidents de sécurité"
+            },
+            {
+                designation: "Réunion de service",
+                taches: "Participation à la réunion de service"
+            },
+            {
+                designation: "Analysis of digital evidence",
+                taches: "Analysis of digital evidence extracted from devices"
+            },
+            {
+                designation: "Report writing",
+                taches: "Writing of digital investigation reports"
+            }
+        ]
+    },
+
+    /**
+     * Initialise les données par défaut si le localStorage est vide (premier lancement)
+     */
+    initDefaults() {
+        const INIT_KEY = 'fiche_eval_initialized';
+        if (localStorage.getItem(INIT_KEY)) return;
+
+        // Pré-charger les agents par défaut
+        if (this.getAgents().length === 0) {
+            this.DEFAULTS.agents.forEach(a => this.addAgent({ ...a }));
+        }
+
+        // Pré-charger les modèles de tâches par défaut
+        if (this.getTemplates().length === 0) {
+            this.DEFAULTS.templates.forEach(t => this.addTemplate({ ...t }));
+        }
+
+        localStorage.setItem(INIT_KEY, '1');
     }
 };

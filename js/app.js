@@ -650,6 +650,9 @@
 
     // ===== INITIALISATION =====
     function init() {
+        // Charger les données par défaut au premier lancement
+        Storage.initDefaults();
+
         initTabs();
 
         // Sélection de la semaine
