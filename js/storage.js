@@ -8,6 +8,7 @@ const Storage = {
     KEYS: {
         AGENTS: 'fiche_eval_agents',
         TEMPLATES: 'fiche_eval_templates',
+        ASSIGNMENTS: 'fiche_eval_assignments',
         HISTORY: 'fiche_eval_history',
         LOGO: 'fiche_eval_logo'
     },
@@ -61,6 +62,9 @@ const Storage = {
     deleteAgent(id) {
         const agents = this.getAgents().filter(a => a.id !== id);
         this._set(this.KEYS.AGENTS, agents);
+        // Nettoyer les assignations
+        const assignments = this.getAssignments().filter(a => a.agentId !== id);
+        this._set(this.KEYS.ASSIGNMENTS, assignments);
     },
 
     // ===== MODÈLES DE TÂCHES =====
@@ -79,6 +83,35 @@ const Storage = {
     deleteTemplate(id) {
         const templates = this.getTemplates().filter(t => t.id !== id);
         this._set(this.KEYS.TEMPLATES, templates);
+        // Nettoyer les assignations
+        const assignments = this.getAssignments().filter(a => a.templateId !== id);
+        this._set(this.KEYS.ASSIGNMENTS, assignments);
+    },
+
+    // ===== ASSIGNATIONS AGENT-TÂCHE (many-to-many) =====
+    getAssignments() {
+        return this._get(this.KEYS.ASSIGNMENTS);
+    },
+
+    isAssigned(agentId, templateId) {
+        return this.getAssignments().some(a => a.agentId === agentId && a.templateId === templateId);
+    },
+
+    toggleAssignment(agentId, templateId) {
+        let assignments = this.getAssignments();
+        const idx = assignments.findIndex(a => a.agentId === agentId && a.templateId === templateId);
+        if (idx !== -1) {
+            assignments.splice(idx, 1);
+        } else {
+            assignments.push({ agentId, templateId });
+        }
+        this._set(this.KEYS.ASSIGNMENTS, assignments);
+    },
+
+    getTemplatesForAgent(agentId) {
+        const assignments = this.getAssignments().filter(a => a.agentId === agentId);
+        const templateIds = assignments.map(a => a.templateId);
+        return this.getTemplates().filter(t => templateIds.includes(t.id));
     },
 
     // ===== HISTORIQUE =====
@@ -177,17 +210,34 @@ const Storage = {
      * Initialise les données par défaut si le localStorage est vide (premier lancement)
      */
     initDefaults() {
-        const INIT_KEY = 'fiche_eval_initialized';
+        const INIT_KEY = 'fiche_eval_initialized_v2';
         if (localStorage.getItem(INIT_KEY)) return;
 
         // Pré-charger les agents par défaut
+        const addedAgents = [];
         if (this.getAgents().length === 0) {
-            this.DEFAULTS.agents.forEach(a => this.addAgent({ ...a }));
+            this.DEFAULTS.agents.forEach(a => {
+                addedAgents.push(this.addAgent({ ...a }));
+            });
         }
 
         // Pré-charger les modèles de tâches par défaut
+        const addedTemplates = [];
         if (this.getTemplates().length === 0) {
-            this.DEFAULTS.templates.forEach(t => this.addTemplate({ ...t }));
+            this.DEFAULTS.templates.forEach(t => {
+                addedTemplates.push(this.addTemplate({ ...t }));
+            });
+        }
+
+        // Assigner toutes les tâches par défaut à tous les agents par défaut
+        if (this.getAssignments().length === 0) {
+            const agents = addedAgents.length > 0 ? addedAgents : this.getAgents();
+            const templates = addedTemplates.length > 0 ? addedTemplates : this.getTemplates();
+            agents.forEach(agent => {
+                templates.forEach(template => {
+                    this.toggleAssignment(agent.id, template.id);
+                });
+            });
         }
 
         localStorage.setItem(INIT_KEY, '1');

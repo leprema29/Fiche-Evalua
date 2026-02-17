@@ -5,6 +5,9 @@
 (function () {
     'use strict';
 
+    // ID de l'agent actuellement sélectionné dans le formulaire
+    let selectedAgentId = '';
+
     // ===== NAVIGATION PAR ONGLETS =====
     function initTabs() {
         const tabs = document.querySelectorAll('.tab');
@@ -16,6 +19,11 @@
                 contents.forEach(c => c.classList.remove('active'));
                 tab.classList.add('active');
                 document.getElementById(tab.dataset.tab).classList.add('active');
+
+                // Rafraîchir la matrice quand on va sur l'onglet Agents & Modèles
+                if (tab.dataset.tab === 'agents-modeles') {
+                    renderMatrix();
+                }
             });
         });
     }
@@ -137,12 +145,21 @@
         return card;
     }
 
+    function getTemplatesForDropdown() {
+        // Si un agent est sélectionné, afficher uniquement ses tâches assignées
+        if (selectedAgentId) {
+            return Storage.getTemplatesForAgent(selectedAgentId);
+        }
+        // Sinon, afficher toutes les tâches
+        return Storage.getTemplates();
+    }
+
     function createActivityEntry(num) {
         const entry = document.createElement('div');
         entry.className = 'activity-entry';
 
-        // Construire la liste des modèles
-        const templates = Storage.getTemplates();
+        // Construire la liste des modèles filtrée par agent
+        const templates = getTemplatesForDropdown();
         let templateOptions = '<option value="">— Appliquer un modèle —</option>';
         templates.forEach(t => {
             templateOptions += `<option value="${t.id}">${t.designation}</option>`;
@@ -344,6 +361,7 @@
     function handleReset() {
         if (!confirm("Réinitialiser le formulaire ? Toutes les données saisies seront perdues.")) return;
 
+        selectedAgentId = '';
         document.getElementById('agent-select').value = '';
         document.getElementById('agent-nom').value = '';
         document.getElementById('agent-categorie').value = '';
@@ -388,6 +406,7 @@
                     Storage.deleteAgent(btn.dataset.id);
                     renderAgentsList();
                     refreshAgentSelect();
+                    renderMatrix();
                 }
             });
         });
@@ -419,6 +438,7 @@
 
         renderAgentsList();
         refreshAgentSelect();
+        renderMatrix();
     }
 
     // ===== GESTION DES MODÈLES (Onglet 2) =====
@@ -448,6 +468,7 @@
                 if (confirm('Supprimer ce modèle ?')) {
                     Storage.deleteTemplate(btn.dataset.id);
                     renderTemplatesList();
+                    renderMatrix();
                 }
             });
         });
@@ -467,6 +488,51 @@
         document.getElementById('new-tpl-taches').value = '';
 
         renderTemplatesList();
+        renderMatrix();
+    }
+
+    // ===== MATRICE AGENTS x TÂCHES =====
+    function renderMatrix() {
+        const container = document.getElementById('matrix-container');
+        const agents = Storage.getAgents();
+        const templates = Storage.getTemplates();
+
+        if (agents.length === 0 || templates.length === 0) {
+            container.innerHTML = '<p class="empty-message">Ajoutez des agents et des modèles de tâches pour voir la matrice.</p>';
+            return;
+        }
+
+        // Construire le tableau
+        let html = '<div class="matrix-scroll"><table class="matrix-table">';
+
+        // En-tête : colonne agents + colonnes tâches
+        html += '<thead><tr><th class="matrix-corner">Agents \\ Tâches</th>';
+        templates.forEach(t => {
+            html += `<th class="matrix-task-header" title="${t.taches}">${t.designation}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        // Lignes : un agent par ligne
+        agents.forEach(a => {
+            html += `<tr><td class="matrix-agent-cell"><strong>${a.nom}</strong><br><small>${a.categorie}</small></td>`;
+            templates.forEach(t => {
+                const checked = Storage.isAssigned(a.id, t.id) ? 'checked' : '';
+                html += `<td class="matrix-check-cell">
+                    <input type="checkbox" class="matrix-checkbox" data-agent="${a.id}" data-template="${t.id}" ${checked}>
+                </td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+
+        // Événements sur les checkboxes
+        container.querySelectorAll('.matrix-checkbox').forEach(cb => {
+            cb.addEventListener('change', () => {
+                Storage.toggleAssignment(cb.dataset.agent, cb.dataset.template);
+            });
+        });
     }
 
     // ===== GESTION DU LOGO (Onglet 2) =====
@@ -638,6 +704,8 @@
     function handleAgentSelect() {
         const select = document.getElementById('agent-select');
         const agentId = select.value;
+        selectedAgentId = agentId;
+
         if (!agentId) return;
 
         const agent = Storage.getAgents().find(a => a.id === agentId);
@@ -646,6 +714,140 @@
             document.getElementById('agent-categorie').value = agent.categorie;
             document.getElementById('agent-structure').value = agent.structure;
         }
+
+        // Rafraîchir les dropdowns de modèles déjà affichés
+        refreshAllTemplateDropdowns();
+    }
+
+    function refreshAllTemplateDropdowns() {
+        const templates = getTemplatesForDropdown();
+        let templateOptions = '<option value="">— Appliquer un modèle —</option>';
+        templates.forEach(t => {
+            templateOptions += `<option value="${t.id}">${t.designation}</option>`;
+        });
+
+        document.querySelectorAll('.template-select').forEach(select => {
+            select.innerHTML = templateOptions;
+        });
+    }
+
+    // ===== REMPLISSAGE ALÉATOIRE =====
+    function handleRandomFill() {
+        // Vérifications
+        if (!selectedAgentId) {
+            alert("Veuillez d'abord sélectionner un agent.");
+            return;
+        }
+
+        const startInput = document.getElementById('semaine-debut').value;
+        if (!startInput) {
+            alert("Veuillez d'abord sélectionner une semaine.");
+            return;
+        }
+
+        const agentTemplates = Storage.getTemplatesForAgent(selectedAgentId);
+        if (agentTemplates.length === 0) {
+            alert("Aucune tâche n'est assignée à cet agent. Allez dans l'onglet 'Agents & Modèles' pour assigner des tâches.");
+            return;
+        }
+
+        // Lire les paramètres
+        const minH = parseInt(document.getElementById('random-min-h').value, 10) || 40;
+        const maxH = parseInt(document.getElementById('random-max-h').value, 10) || 50;
+        const minAct = parseInt(document.getElementById('random-min-act').value, 10) || 1;
+        const maxAct = parseInt(document.getElementById('random-max-act').value, 10) || 3;
+
+        if (minH > maxH) {
+            alert("Les heures minimum ne peuvent pas dépasser les heures maximum.");
+            return;
+        }
+        if (minAct > maxAct) {
+            alert("Le nombre minimum d'activités ne peut pas dépasser le maximum.");
+            return;
+        }
+
+        // Construire les jours si pas déjà fait
+        buildDaysUI();
+
+        const dates = getWeekDates(startInput);
+        const dayCards = document.querySelectorAll('.day-card');
+
+        // Identifier les jours ouvrés (non fériés)
+        const workDays = [];
+        dayCards.forEach((card, i) => {
+            const holiday = Holidays.checkHoliday(dates[i]);
+            if (holiday.isHoliday) {
+                // Marquer comme férié
+                card.classList.add('ferie');
+                card.querySelector('.ferie-checkbox').checked = true;
+            } else {
+                workDays.push({ card, date: dates[i], index: i });
+            }
+        });
+
+        if (workDays.length === 0) {
+            alert("Tous les jours de cette semaine sont fériés. Impossible de remplir.");
+            return;
+        }
+
+        // Calculer le total de minutes cible (entre minH et maxH)
+        const targetMinutes = Math.floor(Math.random() * (maxH - minH + 1) + minH) * 60;
+
+        // Déterminer le nombre d'activités par jour
+        const dayActivitiesCount = workDays.map(() => {
+            return Math.floor(Math.random() * (maxAct - minAct + 1)) + minAct;
+        });
+
+        // Nombre total d'activités
+        const totalActivities = dayActivitiesCount.reduce((s, n) => s + n, 0);
+
+        // Répartir les minutes entre toutes les activités (min 60min = 1h par activité)
+        const minPerActivity = 60; // 1h minimum
+        let remainingMinutes = targetMinutes - (totalActivities * minPerActivity);
+        if (remainingMinutes < 0) {
+            // Pas assez de minutes, augmenter le target
+            remainingMinutes = 0;
+        }
+
+        // Distribuer le reste aléatoirement (par tranches de 30min pour être réaliste)
+        const activityMinutes = new Array(totalActivities).fill(minPerActivity);
+        for (let i = 0; i < remainingMinutes; i += 30) {
+            const idx = Math.floor(Math.random() * totalActivities);
+            activityMinutes[idx] += 30;
+        }
+
+        // Observations aléatoires
+        const observationsPool = ['RAS', 'Fait', 'En cours'];
+
+        // Remplir chaque jour
+        let actIdx = 0;
+        workDays.forEach((wd, dayIdx) => {
+            const card = wd.card;
+            const numAct = dayActivitiesCount[dayIdx];
+            const activitiesContainer = card.querySelector('.activities-container');
+            activitiesContainer.innerHTML = '';
+
+            for (let a = 0; a < numAct; a++) {
+                // Choisir une tâche au hasard
+                const template = agentTemplates[Math.floor(Math.random() * agentTemplates.length)];
+                const minutes = activityMinutes[actIdx];
+                const h = Math.floor(minutes / 60);
+                const m = minutes % 60;
+
+                const entry = createActivityEntry(a + 1);
+                entry.querySelector('.act-designation').value = template.designation;
+                entry.querySelector('.act-taches').value = template.taches;
+                entry.querySelector('.act-date-reception').value = formatDateInput(wd.date);
+                entry.querySelector('.act-duree-h').value = h;
+                entry.querySelector('.act-duree-m').value = m;
+                entry.querySelector('.act-observations').value = observationsPool[Math.floor(Math.random() * observationsPool.length)];
+
+                activitiesContainer.appendChild(entry);
+                actIdx++;
+            }
+        });
+
+        updateVolumeHoraire();
     }
 
     // ===== INITIALISATION =====
@@ -665,6 +867,9 @@
         document.getElementById('btn-generer').addEventListener('click', handleGenerate);
         document.getElementById('btn-reinitialiser').addEventListener('click', handleReset);
 
+        // Remplissage aléatoire
+        document.getElementById('btn-random-fill').addEventListener('click', handleRandomFill);
+
         // Agents
         document.getElementById('btn-add-agent').addEventListener('click', handleAddAgent);
         renderAgentsList();
@@ -673,6 +878,9 @@
         // Modèles
         document.getElementById('btn-add-template').addEventListener('click', handleAddTemplate);
         renderTemplatesList();
+
+        // Matrice
+        renderMatrix();
 
         // Logo
         document.getElementById('logo-upload').addEventListener('change', handleLogoUpload);

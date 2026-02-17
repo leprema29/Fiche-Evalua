@@ -80,6 +80,33 @@
             </div>
         </div>
 
+        <!-- Panneau Remplissage aléatoire -->
+        <div class="form-section random-fill-section">
+            <h2>Remplissage aléatoire</h2>
+            <p class="help-text">Remplit automatiquement la fiche avec des tâches aléatoires parmi celles assignées à l'agent sélectionné.</p>
+            <div class="form-row">
+                <div class="form-group" style="flex:0 0 140px">
+                    <label for="random-min-h">Heures min/semaine</label>
+                    <input type="number" id="random-min-h" min="1" max="80" value="40">
+                </div>
+                <div class="form-group" style="flex:0 0 140px">
+                    <label for="random-max-h">Heures max/semaine</label>
+                    <input type="number" id="random-max-h" min="1" max="80" value="50">
+                </div>
+                <div class="form-group" style="flex:0 0 160px">
+                    <label for="random-min-act">Activités min/jour</label>
+                    <input type="number" id="random-min-act" min="1" max="10" value="1">
+                </div>
+                <div class="form-group" style="flex:0 0 160px">
+                    <label for="random-max-act">Activités max/jour</label>
+                    <input type="number" id="random-max-act" min="1" max="10" value="3">
+                </div>
+                <div class="form-group" style="flex:0 0 auto; align-self:flex-end">
+                    <button type="button" id="btn-random-fill" class="btn btn-warning">Remplissage aléatoire</button>
+                </div>
+            </div>
+        </div>
+
         <div class="form-actions">
             <button type="button" id="btn-generer" class="btn btn-primary">Générer la fiche Word (.docx)</button>
             <button type="button" id="btn-reinitialiser" class="btn btn-secondary">Réinitialiser</button>
@@ -129,6 +156,15 @@
                     </div>
                     <div id="templates-list" class="items-list"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Matrice Agents x Tâches -->
+        <div class="form-section">
+            <h2>Assignation des tâches aux agents</h2>
+            <p class="help-text">Cochez les tâches à associer à chaque agent. Seules les tâches cochées apparaîtront dans le formulaire et le remplissage aléatoire.</p>
+            <div id="matrix-container" class="matrix-container">
+                <p class="empty-message">Ajoutez des agents et des modèles de tâches pour voir la matrice.</p>
             </div>
         </div>
 
