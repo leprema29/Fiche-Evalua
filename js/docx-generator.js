@@ -402,22 +402,42 @@ const DocxGenerator = {
             }
         }
 
-        // === VOLUME HORAIRE (dernière ligne du tableau, fusionnée) ===
+        // === VOLUME HORAIRE (dernière ligne : label à droite sur col 1-4, total dans col Durée) ===
         tableRows.push(new TableRow({
             height: { value: 450, rule: HeightRule.ATLEAST },
             children: [
+                // Colonnes 1-4 fusionnées : "Volume horaire :" aligné à droite
                 new TableCell({
-                    columnSpan: 7,
+                    columnSpan: 4,
                     borders: cellBorders,
                     verticalAlign: VerticalAlign.CENTER,
                     children: [new Paragraph({
                         alignment: AlignmentType.RIGHT,
                         spacing: { before: 40, after: 40 },
                         children: [
-                            new TextRun({ text: "Volume horaire : ", font: FONT, size: FONT_SIZE, bold: true }),
+                            new TextRun({ text: "Volume horaire :", font: FONT, size: FONT_SIZE, bold: true })
+                        ]
+                    })]
+                }),
+                // Colonne Durée : le total des heures
+                new TableCell({
+                    width: { size: colWidths[4], type: WidthType.DXA },
+                    borders: cellBorders,
+                    verticalAlign: VerticalAlign.CENTER,
+                    children: [new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 40, after: 40 },
+                        children: [
                             new TextRun({ text: data.volumeHoraire, font: FONT, size: FONT_SIZE, bold: true })
                         ]
                     })]
+                }),
+                // Colonnes 6-7 fusionnées : vides
+                new TableCell({
+                    columnSpan: 2,
+                    borders: cellBorders,
+                    verticalAlign: VerticalAlign.CENTER,
+                    children: [new Paragraph({ children: [] })]
                 })
             ]
         }));
@@ -433,39 +453,63 @@ const DocxGenerator = {
         // Espace après le tableau
         children.push(new Paragraph({ spacing: { before: 120, after: 60 }, children: [] }));
 
-        // === APPRECIATIONS ===
-        children.push(
-            new Paragraph({
-                spacing: { after: 600 },
-                children: [
-                    new TextRun({ text: "APPRECIATION DU CHEF DE STRUCTURE :", font: FONT, size: FONT_SIZE, bold: true, underline: { type: UnderlineType.SINGLE } })
-                ]
-            })
-        );
+        // === APPRECIATIONS + SIGNATURE (3 colonnes sur la même ligne) ===
+        const signaturesTable = new Table({
+            rows: [
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            width: { size: 33, type: WidthType.PERCENTAGE },
+                            borders: noBorders,
+                            children: [
+                                new Paragraph({
+                                    alignment: AlignmentType.CENTER,
+                                    spacing: { after: 0 },
+                                    children: [new TextRun({ text: "APPRECIATION DU CHEF", font: FONT, size: FONT_SIZE, bold: true, underline: { type: UnderlineType.SINGLE } })]
+                                }),
+                                new Paragraph({
+                                    alignment: AlignmentType.CENTER,
+                                    spacing: { after: 0 },
+                                    children: [new TextRun({ text: "DE STRUCTURE :", font: FONT, size: FONT_SIZE, bold: true, underline: { type: UnderlineType.SINGLE } })]
+                                })
+                            ]
+                        }),
+                        new TableCell({
+                            width: { size: 34, type: WidthType.PERCENTAGE },
+                            borders: noBorders,
+                            children: [
+                                new Paragraph({
+                                    alignment: AlignmentType.CENTER,
+                                    spacing: { after: 0 },
+                                    children: [new TextRun({ text: "APPRECIATION DU SUPERIEUR", font: FONT, size: FONT_SIZE, bold: true, underline: { type: UnderlineType.SINGLE } })]
+                                }),
+                                new Paragraph({
+                                    alignment: AlignmentType.CENTER,
+                                    spacing: { after: 0 },
+                                    children: [new TextRun({ text: "HIERARCHIQUE :", font: FONT, size: FONT_SIZE, bold: true, underline: { type: UnderlineType.SINGLE } })]
+                                })
+                            ]
+                        }),
+                        new TableCell({
+                            width: { size: 33, type: WidthType.PERCENTAGE },
+                            borders: noBorders,
+                            children: [
+                                new Paragraph({
+                                    alignment: AlignmentType.CENTER,
+                                    spacing: { after: 0 },
+                                    children: [new TextRun({ text: "SIGNATURE DE L'INTERESSE", font: FONT, size: FONT_SIZE, bold: true, underline: { type: UnderlineType.SINGLE } })]
+                                })
+                            ]
+                        })
+                    ]
+                })
+            ],
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            layout: TableLayoutType.FIXED,
+            borders: noTableBorders
+        });
 
-        children.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
-
-        children.push(
-            new Paragraph({
-                spacing: { after: 600 },
-                children: [
-                    new TextRun({ text: "APPRECIATION DU SUPERIEUR HIERARCHIQUE :", font: FONT, size: FONT_SIZE, bold: true, underline: { type: UnderlineType.SINGLE } })
-                ]
-            })
-        );
-
-        children.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
-
-        // === SIGNATURE ===
-        children.push(
-            new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                spacing: { after: 200 },
-                children: [
-                    new TextRun({ text: "SIGNATURE DE L'INTERESSE", font: FONT, size: FONT_SIZE, bold: true, underline: { type: UnderlineType.SINGLE } })
-                ]
-            })
-        );
+        children.push(signaturesTable);
 
         // === CRÉATION DU DOCUMENT (paysage A4 + NB en pied de page centré) ===
         const doc = new Document({
