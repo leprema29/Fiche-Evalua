@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Fiches d'Évaluation Hebdomadaires — ANTIC</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+</head>
+<body>
+
+<header class="app-header">
+    <h1>Fiches d'Évaluation Hebdomadaires</h1>
+    <p class="subtitle">ANTIC — Agence Nationale des Technologies de l'Information et de la Communication</p>
+</header>
+
+<nav class="tabs">
+    <button class="tab active" data-tab="nouvelle-fiche">Nouvelle Fiche</button>
+    <button class="tab" data-tab="agents-modeles">Agents &amp; Modèles</button>
+    <button class="tab" data-tab="historique">Historique</button>
+</nav>
+
+<main class="content">
+
+    <!-- ===================== TAB 1: NOUVELLE FICHE ===================== -->
+    <section id="nouvelle-fiche" class="tab-content active">
+
+        <div class="form-section">
+            <h2>Informations générales</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="agent-select">Agent</label>
+                    <select id="agent-select">
+                        <option value="">— Sélectionner un agent —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="agent-nom">Nom et Prénom</label>
+                    <input type="text" id="agent-nom" placeholder="Ex: ABOUBAKAR ISSIAKOU">
+                </div>
+                <div class="form-group">
+                    <label for="agent-categorie">Catégorie</label>
+                    <input type="text" id="agent-categorie" placeholder="Ex: Chef de Service, CADRE">
+                </div>
+                <div class="form-group">
+                    <label for="agent-structure">Structure</label>
+                    <input type="text" id="agent-structure" placeholder="Ex: CIRT">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="semaine-debut">Semaine du</label>
+                    <input type="date" id="semaine-debut">
+                </div>
+                <div class="form-group">
+                    <label for="semaine-fin">Au</label>
+                    <input type="date" id="semaine-fin" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="lieu">Lieu</label>
+                    <input type="text" id="lieu" value="Yaoundé">
+                </div>
+                <div class="form-group">
+                    <label for="date-document">Date du document</label>
+                    <input type="date" id="date-document">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section" id="jours-container">
+            <h2>Activités de la semaine</h2>
+            <!-- Les 5 jours seront générés dynamiquement par JS -->
+        </div>
+
+        <div class="form-section volume-section">
+            <div class="volume-horaire">
+                <strong>Volume horaire total :</strong>
+                <span id="volume-horaire">0h 00min</span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" id="btn-generer" class="btn btn-primary">Générer la fiche Word (.docx)</button>
+            <button type="button" id="btn-reinitialiser" class="btn btn-secondary">Réinitialiser</button>
+        </div>
+
+    </section>
+
+    <!-- ===================== TAB 2: AGENTS & MODÈLES ===================== -->
+    <section id="agents-modeles" class="tab-content">
+
+        <div class="two-columns">
+            <div class="column">
+                <div class="form-section">
+                    <h2>Gestion des agents</h2>
+                    <div class="form-row vertical">
+                        <div class="form-group">
+                            <label for="new-agent-nom">Nom et Prénom</label>
+                            <input type="text" id="new-agent-nom" placeholder="Ex: ABOUBAKAR ISSIAKOU">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-agent-categorie">Catégorie</label>
+                            <input type="text" id="new-agent-categorie" placeholder="Ex: Chef de Service">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-agent-structure">Structure</label>
+                            <input type="text" id="new-agent-structure" placeholder="Ex: CIRT">
+                        </div>
+                        <button type="button" id="btn-add-agent" class="btn btn-primary">Ajouter l'agent</button>
+                    </div>
+                    <div id="agents-list" class="items-list"></div>
+                </div>
+            </div>
+
+            <div class="column">
+                <div class="form-section">
+                    <h2>Modèles de tâches</h2>
+                    <div class="form-row vertical">
+                        <div class="form-group">
+                            <label for="new-tpl-designation">Désignation</label>
+                            <input type="text" id="new-tpl-designation" placeholder="Ex: Dossiers d'authentification">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-tpl-taches">Tâches réalisées (description type)</label>
+                            <textarea id="new-tpl-taches" rows="3" placeholder="Ex: Traitement des dossiers d'authentification"></textarea>
+                        </div>
+                        <button type="button" id="btn-add-template" class="btn btn-primary">Ajouter le modèle</button>
+                    </div>
+                    <div id="templates-list" class="items-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>Logo ANTIC</h2>
+            <p class="help-text">Chargez le logo ANTIC pour qu'il apparaisse sur les fiches générées. Le logo sera sauvegardé dans votre navigateur.</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="logo-upload">Charger le logo (image PNG/JPG)</label>
+                    <input type="file" id="logo-upload" accept="image/png,image/jpeg">
+                </div>
+                <div class="form-group logo-preview-container">
+                    <img id="logo-preview" src="" alt="Aperçu du logo" style="display:none;">
+                    <button type="button" id="btn-remove-logo" class="btn btn-danger" style="display:none;">Supprimer le logo</button>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- ===================== TAB 3: HISTORIQUE ===================== -->
+    <section id="historique" class="tab-content">
+        <div class="form-section">
+            <h2>Fiches générées</h2>
+            <p class="help-text">Historique des fiches générées, sauvegardé localement dans votre navigateur.</p>
+            <div id="historique-list" class="items-list"></div>
+            <p id="historique-empty" class="empty-message">Aucune fiche générée pour le moment.</p>
+        </div>
+    </section>
+
+</main>
+
+<footer class="app-footer">
+    <p>Générateur de Fiches d'Évaluation Hebdomadaires — ANTIC</p>
+</footer>
+
+<script src="js/storage.js"></script>
+<script src="js/holidays.js"></script>
+<script src="js/docx-generator.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
