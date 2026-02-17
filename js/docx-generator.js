@@ -14,16 +14,15 @@ const DocxGenerator = {
             Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
             WidthType, AlignmentType, BorderStyle, PageOrientation,
             VerticalAlign, ImageRun, HeightRule, TableLayoutType,
-            ShadingType, UnderlineType
+            ShadingType, UnderlineType, Footer
         } = docx;
 
         const FONT = "Times New Roman";
         const FONT_SIZE = 20; // demi-points (10pt)
         const SMALL_SIZE = 18; // 9pt
-        const HEADER_SIZE = 22; // 11pt
         const TITLE_SIZE = 24; // 12pt
 
-        // Bordures standard pour les cellules
+        // Bordures standard pour les cellules du tableau principal
         const cellBorders = {
             top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
             bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
@@ -33,23 +32,31 @@ const DocxGenerator = {
 
         // Pas de bordures
         const noBorders = {
-            top: { style: BorderStyle.NONE },
-            bottom: { style: BorderStyle.NONE },
-            left: { style: BorderStyle.NONE },
-            right: { style: BorderStyle.NONE }
+            top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" }
+        };
+
+        // Pas de bordures au niveau table
+        const noTableBorders = {
+            top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" }
         };
 
         // --- Construction des éléments du document ---
         const children = [];
 
-        // === EN-TÊTE BILINGUE ===
-        // Tableau à 3 colonnes: FR | Logo/ANTIC | EN
-        const headerCells = [];
-
+        // === EN-TÊTE BILINGUE (sans bordures) ===
         // Colonne gauche: Texte français
         const frCol = new TableCell({
-            width: { size: 4000, type: WidthType.DXA },
+            width: { size: 33, type: WidthType.PERCENTAGE },
             borders: noBorders,
+            verticalAlign: VerticalAlign.CENTER,
             children: [
                 new Paragraph({
                     alignment: AlignmentType.CENTER,
@@ -69,10 +76,8 @@ const DocxGenerator = {
             ]
         });
 
-        // Colonne centrale: Logo + ANTIC
+        // Colonne centrale: Logo
         const centerChildren = [];
-
-        // Ajouter le logo si disponible
         const logoBase64 = Storage.getLogo();
         if (logoBase64) {
             try {
@@ -85,7 +90,7 @@ const DocxGenerator = {
                 centerChildren.push(
                     new Paragraph({
                         alignment: AlignmentType.CENTER,
-                        spacing: { after: 40 },
+                        spacing: { after: 0 },
                         children: [
                             new ImageRun({
                                 data: bytes,
@@ -100,30 +105,18 @@ const DocxGenerator = {
             }
         }
 
-        centerChildren.push(
-            new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { after: 0 },
-                children: [new TextRun({ text: "AGENCE NATIONALE DES TECHNOLOGIES", font: FONT, size: SMALL_SIZE, bold: true })]
-            }),
-            new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { after: 0 },
-                children: [new TextRun({ text: "DE L'INFORMATION ET DE LA COMMUNICATION", font: FONT, size: SMALL_SIZE, bold: true })]
-            })
-        );
-
         const centerCol = new TableCell({
-            width: { size: 6000, type: WidthType.DXA },
+            width: { size: 34, type: WidthType.PERCENTAGE },
             borders: noBorders,
             verticalAlign: VerticalAlign.CENTER,
-            children: centerChildren
+            children: centerChildren.length > 0 ? centerChildren : [new Paragraph({ children: [] })]
         });
 
         // Colonne droite: Texte anglais
         const enCol = new TableCell({
-            width: { size: 4000, type: WidthType.DXA },
+            width: { size: 33, type: WidthType.PERCENTAGE },
             borders: noBorders,
+            verticalAlign: VerticalAlign.CENTER,
             children: [
                 new Paragraph({
                     alignment: AlignmentType.CENTER,
@@ -145,18 +138,30 @@ const DocxGenerator = {
 
         const headerTable = new Table({
             rows: [
-                new TableRow({
-                    children: [frCol, centerCol, enCol]
-                })
+                new TableRow({ children: [frCol, centerCol, enCol] })
             ],
             width: { size: 100, type: WidthType.PERCENTAGE },
-            layout: TableLayoutType.FIXED
+            layout: TableLayoutType.FIXED,
+            borders: noTableBorders
         });
 
         children.push(headerTable);
 
-        // Espace
-        children.push(new Paragraph({ spacing: { after: 100 }, children: [] }));
+        // === NOM ANTIC bilingue (sous le tableau d'en-tête, centré, sans bordures) ===
+        children.push(
+            new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 40, after: 0 },
+                children: [new TextRun({ text: "AGENCE NATIONALE DES TECHNOLOGIES DE L'INFORMATION ET DE LA COMMUNICATION", font: FONT, size: SMALL_SIZE, bold: true })]
+            })
+        );
+        children.push(
+            new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 80 },
+                children: [new TextRun({ text: "NATIONAL AGENCY FOR INFORMATION AND COMMUNICATION TECHNOLOGY", font: FONT, size: SMALL_SIZE, bold: true })]
+            })
+        );
 
         // === TITRE ===
         children.push(
@@ -220,8 +225,9 @@ const DocxGenerator = {
         // === TABLEAU PRINCIPAL ===
         const tableRows = [];
 
-        // Largeurs des colonnes (en DXA/twips)
-        const colWidths = [1300, 2800, 1500, 3800, 1400, 2000, 1500];
+        // Largeurs des colonnes (en DXA/twips) - optimisé pour paysage A4
+        const colWidths = [1400, 3000, 1600, 4200, 1500, 2000, 1500];
+        const totalWidth = colWidths.reduce((a, b) => a + b, 0);
         const colHeaders = [
             "Jour",
             "Désignation du dossier ou de l'activité",
@@ -260,35 +266,35 @@ const DocxGenerator = {
             const jourName = jourNames[d];
 
             if (dayData.ferie) {
-                // Jour férié: une seule ligne avec "Férié" qui fusionne les colonnes activité
-                const ferieCells = [
-                    new TableCell({
-                        width: { size: colWidths[0], type: WidthType.DXA },
-                        borders: cellBorders,
-                        verticalAlign: VerticalAlign.CENTER,
-                        children: [new Paragraph({
-                            alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: jourName, font: FONT, size: FONT_SIZE, bold: true })]
-                        })]
-                    })
-                ];
-
-                // Colonnes 1-6 avec "Férié" dans la première
-                for (let c = 1; c < 7; c++) {
-                    ferieCells.push(new TableCell({
-                        width: { size: colWidths[c], type: WidthType.DXA },
-                        borders: cellBorders,
-                        verticalAlign: VerticalAlign.CENTER,
-                        children: [new Paragraph({
-                            alignment: AlignmentType.CENTER,
-                            children: c === 1 ? [new TextRun({ text: dayData.ferieName || "Férié", font: FONT, size: FONT_SIZE, italics: true })] : []
-                        })]
-                    }));
-                }
+                // Jour férié: colonne Jour + colonnes 2-7 fusionnées avec texte "Férié (nom)"
+                const ferieText = dayData.ferieName && dayData.ferieName !== 'Férié'
+                    ? `Férié (${dayData.ferieName})`
+                    : "Férié";
 
                 tableRows.push(new TableRow({
                     height: { value: 500, rule: HeightRule.ATLEAST },
-                    children: ferieCells
+                    children: [
+                        // Colonne Jour
+                        new TableCell({
+                            width: { size: colWidths[0], type: WidthType.DXA },
+                            borders: cellBorders,
+                            verticalAlign: VerticalAlign.CENTER,
+                            children: [new Paragraph({
+                                alignment: AlignmentType.CENTER,
+                                children: [new TextRun({ text: jourName, font: FONT, size: FONT_SIZE, bold: true })]
+                            })]
+                        }),
+                        // Colonnes 2-7 fusionnées
+                        new TableCell({
+                            columnSpan: 6,
+                            borders: cellBorders,
+                            verticalAlign: VerticalAlign.CENTER,
+                            children: [new Paragraph({
+                                alignment: AlignmentType.CENTER,
+                                children: [new TextRun({ text: ferieText, font: FONT, size: FONT_SIZE, italics: true })]
+                            })]
+                        })
+                    ]
                 }));
             } else {
                 // Jour normal avec activités
@@ -389,6 +395,26 @@ const DocxGenerator = {
             }
         }
 
+        // === VOLUME HORAIRE (dernière ligne du tableau, fusionnée) ===
+        tableRows.push(new TableRow({
+            height: { value: 450, rule: HeightRule.ATLEAST },
+            children: [
+                new TableCell({
+                    columnSpan: 7,
+                    borders: cellBorders,
+                    verticalAlign: VerticalAlign.CENTER,
+                    children: [new Paragraph({
+                        alignment: AlignmentType.RIGHT,
+                        spacing: { before: 40, after: 40 },
+                        children: [
+                            new TextRun({ text: "Volume horaire : ", font: FONT, size: FONT_SIZE, bold: true }),
+                            new TextRun({ text: data.volumeHoraire, font: FONT, size: FONT_SIZE, bold: true })
+                        ]
+                    })]
+                })
+            ]
+        }));
+
         const mainTable = new Table({
             rows: tableRows,
             width: { size: 100, type: WidthType.PERCENTAGE },
@@ -397,17 +423,8 @@ const DocxGenerator = {
 
         children.push(mainTable);
 
-        // === VOLUME HORAIRE ===
+        // Espace après le tableau
         children.push(new Paragraph({ spacing: { before: 120, after: 60 }, children: [] }));
-        children.push(
-            new Paragraph({
-                spacing: { after: 200 },
-                children: [
-                    new TextRun({ text: "Volume horaire : ", font: FONT, size: FONT_SIZE, bold: true }),
-                    new TextRun({ text: data.volumeHoraire, font: FONT, size: FONT_SIZE, bold: true })
-                ]
-            })
-        );
 
         // === APPRECIATIONS ===
         children.push(
@@ -436,47 +453,48 @@ const DocxGenerator = {
         children.push(
             new Paragraph({
                 alignment: AlignmentType.RIGHT,
-                spacing: { after: 600 },
+                spacing: { after: 200 },
                 children: [
                     new TextRun({ text: "SIGNATURE DE L'INTERESSE", font: FONT, size: FONT_SIZE, bold: true, underline: { type: UnderlineType.SINGLE } })
                 ]
             })
         );
 
-        // === NOTE DE BAS ===
-        children.push(new Paragraph({ spacing: { after: 100 }, children: [] }));
-        children.push(
-            new Paragraph({
-                spacing: { before: 100 },
-                children: [
-                    new TextRun({
-                        text: "NB : À TRANSMETTRE CHAQUE 1ER JOUR OUVRÉ DE LA SEMAINE À L'INSPECTION DES SERVICES",
-                        font: FONT,
-                        size: SMALL_SIZE,
-                        bold: true,
-                        italics: true
-                    })
-                ]
-            })
-        );
-
-        // === CRÉATION DU DOCUMENT ===
+        // === CRÉATION DU DOCUMENT (paysage A4 + NB en pied de page centré) ===
         const doc = new Document({
             sections: [{
                 properties: {
                     page: {
                         size: {
                             orientation: PageOrientation.LANDSCAPE,
-                            width: 16838,  // A4 en twips (297mm)
-                            height: 11906  // A4 en twips (210mm)
+                            width: 16838,  // A4 297mm en twips
+                            height: 11906  // A4 210mm en twips
                         },
                         margin: {
                             top: 600,
-                            bottom: 600,
+                            bottom: 800,
                             left: 800,
                             right: 800
                         }
                     }
+                },
+                footers: {
+                    default: new Footer({
+                        children: [
+                            new Paragraph({
+                                alignment: AlignmentType.CENTER,
+                                children: [
+                                    new TextRun({
+                                        text: "NB : À TRANSMETTRE CHAQUE 1ER JOUR OUVRÉ DE LA SEMAINE À L'INSPECTION DES SERVICES",
+                                        font: FONT,
+                                        size: SMALL_SIZE,
+                                        bold: true,
+                                        italics: true
+                                    })
+                                ]
+                            })
+                        ]
+                    })
                 },
                 children: children
             }]
