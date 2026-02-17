@@ -52,7 +52,7 @@ const DocxGenerator = {
         const children = [];
 
         // === EN-TÊTE BILINGUE (sans bordures) ===
-        // Colonne gauche: Texte français
+        // Colonne gauche: Texte français + nom ANTIC FR
         const frCol = new TableCell({
             width: { size: 33, type: WidthType.PERCENTAGE },
             borders: noBorders,
@@ -72,6 +72,16 @@ const DocxGenerator = {
                     alignment: AlignmentType.CENTER,
                     spacing: { after: 0 },
                     children: [new TextRun({ text: "-------", font: FONT, size: SMALL_SIZE })]
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 0 },
+                    children: [new TextRun({ text: "AGENCE NATIONALE DES TECHNOLOGIES", font: FONT, size: SMALL_SIZE, bold: true })]
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 0 },
+                    children: [new TextRun({ text: "DE L'INFORMATION ET DE LA COMMUNICATION", font: FONT, size: SMALL_SIZE, bold: true })]
                 })
             ]
         });
@@ -112,7 +122,7 @@ const DocxGenerator = {
             children: centerChildren.length > 0 ? centerChildren : [new Paragraph({ children: [] })]
         });
 
-        // Colonne droite: Texte anglais
+        // Colonne droite: Texte anglais + nom ANTIC EN
         const enCol = new TableCell({
             width: { size: 33, type: WidthType.PERCENTAGE },
             borders: noBorders,
@@ -132,6 +142,16 @@ const DocxGenerator = {
                     alignment: AlignmentType.CENTER,
                     spacing: { after: 0 },
                     children: [new TextRun({ text: "-------", font: FONT, size: SMALL_SIZE })]
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 0 },
+                    children: [new TextRun({ text: "NATIONAL AGENCY FOR INFORMATION", font: FONT, size: SMALL_SIZE, bold: true })]
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 0 },
+                    children: [new TextRun({ text: "AND COMMUNICATION TECHNOLOGY", font: FONT, size: SMALL_SIZE, bold: true })]
                 })
             ]
         });
@@ -147,21 +167,8 @@ const DocxGenerator = {
 
         children.push(headerTable);
 
-        // === NOM ANTIC bilingue (sous le tableau d'en-tête, centré, sans bordures) ===
-        children.push(
-            new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { before: 40, after: 0 },
-                children: [new TextRun({ text: "AGENCE NATIONALE DES TECHNOLOGIES DE L'INFORMATION ET DE LA COMMUNICATION", font: FONT, size: SMALL_SIZE, bold: true })]
-            })
-        );
-        children.push(
-            new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { after: 80 },
-                children: [new TextRun({ text: "NATIONAL AGENCY FOR INFORMATION AND COMMUNICATION TECHNOLOGY", font: FONT, size: SMALL_SIZE, bold: true })]
-            })
-        );
+        // Espace avant le titre
+        children.push(new Paragraph({ spacing: { after: 80 }, children: [] }));
 
         // === TITRE ===
         children.push(
@@ -467,8 +474,8 @@ const DocxGenerator = {
                     page: {
                         size: {
                             orientation: PageOrientation.LANDSCAPE,
-                            width: 16838,  // A4 297mm en twips
-                            height: 11906  // A4 210mm en twips
+                            width: 11906,  // A4 court (210mm) — docx.js fait la rotation
+                            height: 16838  // A4 long (297mm)
                         },
                         margin: {
                             top: 600,
