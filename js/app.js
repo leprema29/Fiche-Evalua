@@ -567,7 +567,19 @@
     }
 
     // ===== GESTION DU LOGO (Onglet 2) =====
-    function initLogo() {
+    async function initLogo() {
+        // Essayer de charger le logo depuis le backend d'abord
+        try {
+            const backendLogoBase64 = await Api.getLogoBase64();
+            if (backendLogoBase64) {
+                Storage.setLogo(backendLogoBase64);
+                showLogoPreview(backendLogoBase64);
+                return;
+            }
+        } catch (e) {
+            // Backend pas disponible, fallback localStorage
+        }
+        // Fallback localStorage
         const logoData = Storage.getLogo();
         if (logoData) {
             showLogoPreview(logoData);
@@ -594,6 +606,7 @@
         const file = e.target.files[0];
         if (!file) return;
 
+        // Sauvegarder en local
         const reader = new FileReader();
         reader.onload = function (evt) {
             const dataUrl = evt.target.result;
@@ -601,12 +614,26 @@
             showLogoPreview(dataUrl);
         };
         reader.readAsDataURL(file);
+
+        // Uploader vers le backend (si disponible)
+        Api.uploadLogo(file).then(() => {
+            console.log('Logo uploadé sur le serveur');
+        }).catch(err => {
+            console.warn('Impossible d\'uploader le logo sur le serveur:', err.message);
+        });
     }
 
     function handleRemoveLogo() {
         Storage.removeLogo();
         hideLogoPreview();
         document.getElementById('logo-upload').value = '';
+
+        // Supprimer du backend (si disponible)
+        Api.deleteLogo().then(() => {
+            console.log('Logo supprimé du serveur');
+        }).catch(err => {
+            console.warn('Impossible de supprimer le logo du serveur:', err.message);
+        });
     }
 
     // ===== HISTORIQUE (Onglet 3) =====

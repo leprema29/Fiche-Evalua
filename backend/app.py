@@ -168,6 +168,50 @@ def test_smtp():
     return jsonify(result)
 
 
+# === LOGO API ===
+@app.route('/api/logo', methods=['GET'])
+def get_logo():
+    """Retourne le logo stocké sur le serveur (accessible sans auth)."""
+    logo_path = os.path.join(BASE_DIR, 'instance', 'logo.png')
+    if not os.path.exists(logo_path):
+        return jsonify({'error': 'Aucun logo enregistré'}), 404
+    return send_from_directory(os.path.join(BASE_DIR, 'instance'), 'logo.png')
+
+
+@app.route('/api/logo', methods=['POST'])
+@login_required
+def upload_logo():
+    """Upload le logo sur le serveur (admin uniquement)."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'Aucun fichier fourni'}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'error': 'Fichier vide'}), 400
+
+    # Vérifier le type MIME
+    allowed = {'image/png', 'image/jpeg', 'image/jpg'}
+    if file.content_type not in allowed:
+        return jsonify({'error': 'Format non supporté. Utilisez PNG ou JPG.'}), 400
+
+    logo_path = os.path.join(BASE_DIR, 'instance', 'logo.png')
+    os.makedirs(os.path.join(BASE_DIR, 'instance'), exist_ok=True)
+    file.save(logo_path)
+    logger.info("Logo uploadé avec succès")
+    return jsonify({'success': True, 'message': 'Logo enregistré sur le serveur'})
+
+
+@app.route('/api/logo', methods=['DELETE'])
+@login_required
+def delete_logo():
+    """Supprime le logo du serveur (admin uniquement)."""
+    logo_path = os.path.join(BASE_DIR, 'instance', 'logo.png')
+    if os.path.exists(logo_path):
+        os.unlink(logo_path)
+        logger.info("Logo supprimé")
+    return jsonify({'success': True, 'message': 'Logo supprimé du serveur'})
+
+
 # === EMPLOYEE SYNC API ===
 @app.route('/api/employees/sync', methods=['POST'])
 @login_required

@@ -119,6 +119,51 @@ const Api = {
         return this._fetch('/api/schedules');
     },
 
+    // === LOGO ===
+    async getLogoUrl() {
+        // Vérifie si le logo existe sur le serveur, retourne l'URL ou null
+        try {
+            const resp = await fetch(this.BASE_URL + '/api/logo', { credentials: 'same-origin' });
+            if (resp.ok) {
+                const blob = await resp.blob();
+                return URL.createObjectURL(blob);
+            }
+            return null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    async getLogoBase64() {
+        // Récupère le logo du serveur en base64 pour le DOCX
+        try {
+            const resp = await fetch(this.BASE_URL + '/api/logo', { credentials: 'same-origin' });
+            if (!resp.ok) return null;
+            const blob = await resp.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) {
+            return null;
+        }
+    },
+
+    async uploadLogo(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        return this._fetch('/api/logo', {
+            method: 'POST',
+            body: formData
+        });
+    },
+
+    async deleteLogo() {
+        return this._fetch('/api/logo', { method: 'DELETE' });
+    },
+
     // === SYNC ALL DATA ===
     async syncAllData() {
         const agents = Storage.getAgents();
