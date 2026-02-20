@@ -272,6 +272,9 @@ const DocxGenerator = {
             const dayData = data.jours[d];
             const jourName = jourNames[d];
 
+            // Formater l'horaire du jour
+            const horaireText = this._formatHoraire(dayData.horaire);
+
             if (dayData.ferie) {
                 // Jour férié: colonne Jour + colonnes 2-7 fusionnées avec texte "Férié (nom)"
                 const ferieText = dayData.ferieName && dayData.ferieName !== 'Férié'
@@ -314,15 +317,26 @@ const DocxGenerator = {
 
                     // Colonne "Jour" — fusionne verticalement si plusieurs activités
                     if (a === 0) {
+                        const jourCellChildren = [
+                            new Paragraph({
+                                alignment: AlignmentType.CENTER,
+                                spacing: { after: 20 },
+                                children: [new TextRun({ text: jourName, font: FONT, size: FONT_SIZE, bold: true })]
+                            })
+                        ];
+                        if (horaireText) {
+                            jourCellChildren.push(new Paragraph({
+                                alignment: AlignmentType.CENTER,
+                                spacing: { before: 0, after: 0 },
+                                children: [new TextRun({ text: horaireText, font: FONT, size: SMALL_SIZE, italics: true })]
+                            }));
+                        }
                         rowCells.push(new TableCell({
                             width: { size: colWidths[0], type: WidthType.DXA },
                             borders: cellBorders,
                             verticalAlign: VerticalAlign.CENTER,
                             rowSpan: nbActivities,
-                            children: [new Paragraph({
-                                alignment: AlignmentType.CENTER,
-                                children: [new TextRun({ text: jourName, font: FONT, size: FONT_SIZE, bold: true })]
-                            })]
+                            children: jourCellChildren
                         }));
                     }
 
@@ -592,5 +606,16 @@ const DocxGenerator = {
         if (h === 0 && m === 0) return "";
         if (m === 0) return `${h}h`;
         return `${h}h${m.toString().padStart(2, '0')}min`;
+    },
+
+    _formatHoraire(horaire) {
+        if (!horaire) return "";
+        const parts = horaire.split(':');
+        if (parts.length < 2) return "";
+        const h = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        if (isNaN(h)) return "";
+        if (m === 0) return `${h}h00`;
+        return `${h}h${m.toString().padStart(2, '0')}`;
     }
 };

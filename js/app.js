@@ -120,6 +120,10 @@
                     <span class="ferie-badge">${holiday.isHoliday ? holiday.name : 'Férié'}</span>
                 </div>
                 <div class="day-header-right">
+                    <div class="horaire-group">
+                        <label>Horaire :</label>
+                        <input type="time" class="day-horaire" value="08:00">
+                    </div>
                     <label class="ferie-toggle">
                         <input type="checkbox" class="ferie-checkbox" ${holiday.isHoliday ? 'checked' : ''}>
                         Férié
@@ -289,9 +293,11 @@
         const dayCards = document.querySelectorAll('.day-card');
         dayCards.forEach(card => {
             const isFerie = card.classList.contains('ferie');
+            const horaire = card.querySelector('.day-horaire') ? card.querySelector('.day-horaire').value : '';
             const dayObj = {
                 ferie: isFerie,
                 ferieName: isFerie ? (card.querySelector('.ferie-badge').textContent || 'Férié') : null,
+                horaire: horaire,
                 activites: []
             };
 
@@ -696,6 +702,11 @@
                 const card = dayCards[i];
                 const checkbox = card.querySelector('.ferie-checkbox');
 
+                // Restaurer l'horaire
+                if (jour.horaire && card.querySelector('.day-horaire')) {
+                    card.querySelector('.day-horaire').value = jour.horaire;
+                }
+
                 if (jour.ferie) {
                     checkbox.checked = true;
                     card.classList.add('ferie');
@@ -781,6 +792,8 @@
         const maxH = parseInt(document.getElementById('random-max-h').value, 10) || 50;
         const minAct = parseInt(document.getElementById('random-min-act').value, 10) || 1;
         const maxAct = parseInt(document.getElementById('random-max-act').value, 10) || 3;
+        const minHoraire = parseInt(document.getElementById('random-min-horaire').value, 10) || 8;
+        const maxHoraire = parseInt(document.getElementById('random-max-horaire').value, 10) || 10;
 
         if (minH > maxH) {
             alert("Les heures minimum ne peuvent pas dépasser les heures maximum.");
@@ -788,6 +801,10 @@
         }
         if (minAct > maxAct) {
             alert("Le nombre minimum d'activités ne peut pas dépasser le maximum.");
+            return;
+        }
+        if (minHoraire > maxHoraire) {
+            alert("L'horaire minimum ne peut pas dépasser l'horaire maximum.");
             return;
         }
 
@@ -851,6 +868,14 @@
             const numAct = dayActivitiesCount[dayIdx];
             const activitiesContainer = card.querySelector('.activities-container');
             activitiesContainer.innerHTML = '';
+
+            // Générer un horaire aléatoire entre minHoraire et maxHoraire (par pas de 15 min)
+            const totalSlots = (maxHoraire - minHoraire) * 4; // tranches de 15 min
+            const randomSlot = Math.floor(Math.random() * (totalSlots + 1));
+            const horaireMinutes = minHoraire * 60 + randomSlot * 15;
+            const hh = Math.floor(horaireMinutes / 60);
+            const mm = horaireMinutes % 60;
+            card.querySelector('.day-horaire').value = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 
             for (let a = 0; a < numAct; a++) {
                 // Choisir une tâche au hasard

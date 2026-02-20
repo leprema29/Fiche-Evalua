@@ -264,6 +264,36 @@ body {
     gap: 0.75rem;
 }
 
+.horaire-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    color: #444;
+}
+
+.horaire-group label {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.horaire-group input[type="time"] {
+    padding: 0.2rem 0.4rem;
+    border: 1px solid #d0d5dd;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: #0f3460;
+    font-weight: 600;
+    width: 100px;
+    background: #fff;
+}
+
+.horaire-group input[type="time"]:focus {
+    outline: none;
+    border-color: #0f3460;
+    box-shadow: 0 0 0 2px rgba(15, 52, 96, 0.1);
+}
+
 .ferie-toggle {
     display: flex;
     align-items: center;
